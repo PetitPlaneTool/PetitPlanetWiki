@@ -69,6 +69,9 @@ artifacts/
 *.nuget.targets
 
 # Publish / MSIX build output
+dist/
+installer/output/
+installer/assets/*.cer
 **/AppPackages/
 **/BundleArtifacts/
 *.appx
@@ -80,6 +83,8 @@ artifacts/
 *.msixupload
 *.cer
 *.pfx
+# 本地证书目录（公钥见 certificate 独立仓库，私钥勿提交）
+certificate/
 *.publishproj
 PublishProfiles/*.pubxml.user
 

@@ -11,13 +11,13 @@
   <Identity
     Name="d1a9e6ae-55c4-486b-837c-b5251ec6d11c"
     Publisher="CN=Administrator"
-    Version="1.0.0.0" />
+    Version="0.0.1.0" />
 
   <mp:PhoneIdentity PhoneProductId="d1a9e6ae-55c4-486b-837c-b5251ec6d11c" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>PetitPlanetTool (Package)</DisplayName>
-    <PublisherDisplayName>Administrator</PublisherDisplayName>
+    <DisplayName>星布谷地Wiki</DisplayName>
+    <PublisherDisplayName>露米工作室</PublisherDisplayName>
     <Logo>Images\StoreLogo.png</Logo>
   </Properties>
 
@@ -35,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="PetitPlanetTool (Package)"
-        Description="PetitPlanetTool (Package)"
+        DisplayName="星布谷地Wiki"
+        Description="星布谷地Wiki — 露米工作室"
         BackgroundColor="transparent"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">

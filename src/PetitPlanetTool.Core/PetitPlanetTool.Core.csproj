@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>PetitPlanetTool.Core</RootNamespace>
-    <Description>PetitPlanetTool 共享核心逻辑类库（可选扩展）</Description>
+    <Description>星布谷地Wiki 共享核心逻辑类库 — 露米工作室</Description>
   </PropertyGroup>
 
 </Project>

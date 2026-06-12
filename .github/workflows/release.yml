@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "发布版本号（如 0.0.1，不含 v 前缀）"
+        required: false
+        default: "0.0.1"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE }}
+      CERTIFICATE_PASSWORD: ${{ secrets.PW }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup 安装失败" }
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.version }}") {
+            $v = "${{ inputs.version }}"
+          } elseif ("${{ github.ref }}" -like "refs/tags/v*") {
+            $v = "${{ github.ref_name }}".Substring(1)
+          } else {
+            $v = "0.0.1"
+          }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Verify signing secrets
+        shell: pwsh
+        run: |
+          if (-not $env:CERTIFICATE_BASE64 -or -not $env:CERTIFICATE_PASSWORD) {
+            throw "缺少 GitHub Secrets: CERTIFICATE 与 PW。请在主仓库 Settings → Secrets 中配置（值来自 certificate 仓库本地 codesign.pfx）。"
+          }
+
+      - name: Build signed release artifacts
+        shell: pwsh
+        run: |
+          ./scripts/release-build.ps1 -Version "${{ steps.version.outputs.version }}"
+
+      - name: Remove any leftover private key
+        if: always()
+        shell: pwsh
+        run: |
+          Remove-Item -Force codesign.pfx -ErrorAction SilentlyContinue
+          Remove-Item -Force installer/assets/PetitPlanetRootCA.cer -ErrorAction SilentlyContinue
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.version.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          files: dist/*
+          generate_release_notes: true
+          overwrite: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

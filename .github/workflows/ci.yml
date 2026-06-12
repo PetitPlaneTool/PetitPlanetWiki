@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Clean and build (unsigned MSIX)
+        shell: pwsh
+        run: |
+          ./scripts/clean-build.ps1
+          ./scripts/build-msix.ps1 -Platform x64
+
+      - name: Upload unsigned MSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: msix-unsigned-x64
+          path: src/PetitPlanetTool.Package/AppPackages/**/*.msix
+          if-no-files-found: error
