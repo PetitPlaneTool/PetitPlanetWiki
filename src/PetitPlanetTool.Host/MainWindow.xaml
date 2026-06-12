@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="PetitPlanetTool.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="PetitPlanetTool">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <!-- 全窗口 WebView2，用于承载 React 前端 -->
+    <Grid>
+        <controls:WebView2 x:Name="MainWebView"
+                           Source="about:blank"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="Stretch" />
+    </Grid>
+</Window>
