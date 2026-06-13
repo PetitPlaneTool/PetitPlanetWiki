@@ -64,6 +64,9 @@ if (-not $iscc) {
 
 Write-Host ">>> 编译 Inno Setup 安装器..." -ForegroundColor Cyan
 & $iscc "/DMyAppVersion=$Version" (Join-Path $Root "installer\PetitPlanetWikiSetup.iss")
+if ($LASTEXITCODE -ne 0) {
+    throw "Inno Setup 编译失败 (exit code $LASTEXITCODE)"
+}
 
 $setupExe = Join-Path $Root "installer\output\PetitPlanetWikiSetup.exe"
 if (-not (Test-Path $setupExe)) {

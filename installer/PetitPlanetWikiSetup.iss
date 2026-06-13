@@ -1,9 +1,9 @@
 ; 星布谷地Wiki Inno Setup 引导安装程序
 ; 编译前: .\scripts\prepare-installer.ps1
-; 编译: ISCC.exe /DMyAppVersion=0.1.1 installer\PetitPlanetWikiSetup.iss
+; 编译: ISCC.exe /DMyAppVersion=0.1.2 installer\PetitPlanetWikiSetup.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.1"
+  #define MyAppVersion "0.1.2"
 #endif
 
 #define MyAppName "星布谷地Wiki"
@@ -36,7 +36,7 @@ Source: "run-install.cmd"; DestDir: "{tmp}\PetitPlanetWiki"; Flags: dontcopy
 
 [Run]
 Filename: "{cmd}"; \
-  Parameters: "/c \"\"{tmp}\PetitPlanetWiki\run-install.cmd\"\""; \
+  Parameters: "/c ""{tmp}\PetitPlanetWiki\run-install.cmd"""; \
   WorkingDir: "{tmp}\PetitPlanetWiki"; \
   StatusMsg: "正在安装证书并下载应用（请查看命令行窗口）..."; \
   Flags: postinstall waituntilterminated

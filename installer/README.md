@@ -14,7 +14,7 @@
 ```powershell
 # 需安装 Inno Setup 6: https://jrsoftware.org/isinfo.php
 .\scripts\prepare-installer.ps1
-& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=0.1.1 installer\PetitPlanetWikiSetup.iss
+& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DMyAppVersion=0.1.2 installer\PetitPlanetWikiSetup.iss
 ```
 
 输出：`installer/output/PetitPlanetWikiSetup.exe`
