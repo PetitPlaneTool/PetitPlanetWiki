@@ -14,11 +14,7 @@ $appxVersion = if ($Version -match '^\d+\.\d+\.\d+$') { "$Version.0" } else { $V
 & (Join-Path $PSScriptRoot "clean-build.ps1")
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
-Write-Host ">>> 生成 MSIX 图标资源..." -ForegroundColor Cyan
-python -m pip install --quiet Pillow
-if ($LASTEXITCODE -ne 0) { throw "安装 Pillow 失败" }
-python (Join-Path $PSScriptRoot "generate-package-icons.py")
-if ($LASTEXITCODE -ne 0) { throw "图标生成失败" }
+# 图标资源已预生成在 src/PetitPlanetTool.Package/Images/，本地更新请运行: python scripts/generate-package-icons.py
 
 & (Join-Path $PSScriptRoot "prepare-installer.ps1")
 

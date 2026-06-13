@@ -31,7 +31,7 @@ def find_source() -> Path:
     for path in SRC_CANDIDATES:
         if path.exists():
             return path
-    raise SystemExit(f"未找到 Logo.png，请将源图放在: {SRC_CANDIDATES[0]}")
+    raise SystemExit(f"Logo.png not found. Place source at: {SRC_CANDIDATES[0]}")
 
 
 def remove_dark_background(img: Image.Image, threshold: int = 42) -> Image.Image:
@@ -78,7 +78,7 @@ def fit_wide(img: Image.Image, width: int, height: int, fill_ratio: float = 0.86
 
 def main() -> None:
     src = find_source()
-    print(f">>> 源图: {src}")
+    print(f">>> Source: {src}")
 
     base = remove_dark_background(Image.open(src))
     base = crop_to_content(base)
@@ -102,6 +102,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    print(">>> 从 Logo.png 生成 MSIX 图标资源")
+    print(">>> Generating MSIX icons from Logo.png")
     main()
-    print(">>> 完成")
+    print(">>> Done")
