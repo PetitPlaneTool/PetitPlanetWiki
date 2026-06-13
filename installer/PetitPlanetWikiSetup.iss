@@ -1,9 +1,9 @@
 ; 星布谷地Wiki Inno Setup 引导安装程序
-; 在线版: ISCC /DMyAppVersion=0.1.9 installer\PetitPlanetWikiSetup.iss
-; 离线版: ISCC /DMyAppVersion=0.1.9 /DEMBED_MSIX=1 /DOutputFileName=PetitPlanetWikiSetupFull installer\PetitPlanetWikiSetup.iss
+; 在线版: ISCC /DMyAppVersion=0.1.10 installer\PetitPlanetWikiSetup.iss
+; 离线版: ISCC /DMyAppVersion=0.1.10 /DEMBED_MSIX=1 /DOutputFileName=PetitPlanetWikiSetupFull installer\PetitPlanetWikiSetup.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.9"
+  #define MyAppVersion "0.1.10"
 #endif
 
 #ifndef OutputFileName
