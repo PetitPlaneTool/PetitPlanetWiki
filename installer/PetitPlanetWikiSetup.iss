@@ -1,9 +1,9 @@
 ; 星布谷地Wiki Inno Setup 引导安装程序
 ; 编译前: .\scripts\prepare-installer.ps1
-; 编译: ISCC.exe /DMyAppVersion=0.1.2 installer\PetitPlanetWikiSetup.iss
+; 编译: ISCC.exe /DMyAppVersion=0.1.3 installer\PetitPlanetWikiSetup.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.2"
+  #define MyAppVersion "0.1.3"
 #endif
 
 #define MyAppName "星布谷地Wiki"
@@ -30,14 +30,14 @@ Uninstallable=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "assets\PetitPlanetRootCA.cer"; DestDir: "{tmp}\PetitPlanetWiki"; Flags: dontcopy
-Source: "install-app.ps1"; DestDir: "{tmp}\PetitPlanetWiki"; Flags: dontcopy
-Source: "run-install.cmd"; DestDir: "{tmp}\PetitPlanetWiki"; Flags: dontcopy
+Source: "assets\PetitPlanetRootCA.cer"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "install-app.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "run-install.cmd"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Run]
-Filename: "{cmd}"; \
-  Parameters: "/c ""{tmp}\PetitPlanetWiki\run-install.cmd"""; \
-  WorkingDir: "{tmp}\PetitPlanetWiki"; \
+Filename: "{sys}\cmd.exe"; \
+  Parameters: "/c ""{tmp}\run-install.cmd"""; \
+  WorkingDir: "{tmp}"; \
   StatusMsg: "正在安装证书并下载应用（请查看命令行窗口）..."; \
   Flags: postinstall waituntilterminated
 
