@@ -9,7 +9,7 @@ public static class AppConstants
     public const string ProductName = "星布谷地Wiki";
 
     /// <summary>应用版本号</summary>
-    public const string Version = "0.0.1";
+    public const string Version = "0.0.2";
 
     /// <summary>开发者 / 发行方</summary>
     public const string Publisher = "露米工作室";

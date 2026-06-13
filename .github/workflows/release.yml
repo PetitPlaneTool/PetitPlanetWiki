@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "发布版本号（如 0.0.1，不含 v 前缀）"
+        description: "发布版本号（如 0.0.2，不含 v 前缀）"
         required: false
-        default: "0.0.1"
+        default: "0.0.2"
 
 permissions:
   contents: write
@@ -56,7 +56,7 @@ jobs:
           } elseif ("${{ github.ref }}" -like "refs/tags/v*") {
             $v = "${{ github.ref_name }}".Substring(1)
           } else {
-            $v = "0.0.1"
+            $v = "0.0.2"
           }
           "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
