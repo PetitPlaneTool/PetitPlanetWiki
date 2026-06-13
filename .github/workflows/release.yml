@@ -17,6 +17,7 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    environment: CERTIFICATE
 
     steps:
       - name: Checkout
@@ -85,7 +86,7 @@ jobs:
           Write-Host "  PFX_PASSWORD=$($env:S_PFX_PASSWORD.Length)"
 
           if ([string]::IsNullOrWhiteSpace($cert) -or [string]::IsNullOrWhiteSpace($pw)) {
-            throw "未检测到签名凭据。请在 PetitPlanetWiki 仓库 Settings → Secrets → Actions 添加 CERTIFICATE（PFX Base64）与 PW（PFX 密码）。若为组织 Secret，需授权本仓库访问。"
+            throw "未检测到签名凭据。请在 Environment「CERTIFICATE」中配置 CERTIFICATE（PFX Base64）与 PW（PFX 密码）。"
           }
 
           "cert_len=$($cert.Length)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
