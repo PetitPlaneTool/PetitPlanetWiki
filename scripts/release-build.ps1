@@ -16,9 +16,8 @@ $Root = Split-Path -Parent $PSScriptRoot
 $distDir = Join-Path $Root "dist"
 $appxVersion = if ($Version -match '^\d+\.\d+\.\d+$') { "$Version.0" } else { $Version }
 
-New-Item -ItemType Directory -Path $distDir -Force | Out-Null
-
 & (Join-Path $PSScriptRoot "clean-build.ps1")
+New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
 $msixBuilt = & (Join-Path $PSScriptRoot "build-msix.ps1") -Platform $Platform | Select-Object -Last 1
 if ([string]::IsNullOrWhiteSpace($msixBuilt) -or -not (Test-Path $msixBuilt)) {
