@@ -262,7 +262,7 @@ flowchart LR
 |--------|-----|
 | `CERTIFICATE` | `codesign.pfx` 的 Base64 全文 |
 | `PW` | PFX 导出密码 |
-| `GITEE_TOKEN` | Gitee 私人令牌（用于同步 MSIX 到国内镜像 [petit-planet-wiki](https://gitee.com/kqx123/petit-planet-wiki)） |
+| `GITEE_TOKEN` | Gitee 私人令牌（用于将 MSIX 推送到国内镜像仓库 `master/releases/`） |
 
 > Release 工作流已声明 `environment: CERTIFICATE`，否则无法读取上述 Secrets。
 

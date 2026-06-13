@@ -1,9 +1,9 @@
 ; 星布谷地Wiki Inno Setup 引导安装程序
 ; 编译前: .\scripts\prepare-installer.ps1
-; 编译: ISCC.exe /DMyAppVersion=0.1.7 installer\PetitPlanetWikiSetup.iss
+; 编译: ISCC.exe /DMyAppVersion=0.1.8 installer\PetitPlanetWikiSetup.iss
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.7"
+  #define MyAppVersion "0.1.8"
 #endif
 
 #define MyAppName "星布谷地Wiki"

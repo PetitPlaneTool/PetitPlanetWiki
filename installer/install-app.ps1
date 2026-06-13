@@ -9,6 +9,8 @@ param(
 
     [string]$MirrorRepo = "kqx123/petit-planet-wiki",
 
+    [string]$MirrorBranch = "master",
+
     [string]$CertRepo = "PetitPlaneTool/certificate",
 
     [string]$AssetPattern = "PetitPlanetWiki_*.msix"
@@ -162,33 +164,26 @@ function Find-MsixAssetFromGitHubRelease([object]$Release) {
     }
 }
 
-function Find-MsixAssetFromGiteeRelease([object]$Release, [string]$Owner, [string]$Repo) {
-    $releaseId = $Release.id
-    $tagName = $Release.tag_name
-    $attachUrl = "https://gitee.com/api/v5/repos/$Owner/$Repo/releases/$releaseId/attach_files"
-    $attachments = Invoke-ApiSafe -Uri $attachUrl -Headers $headers
+function Find-MsixAssetFromGiteeRaw {
+    param([string]$Owner, [string]$RepoName, [string]$Branch)
 
-    $file = $attachments | Where-Object { $_.name -like $AssetPattern } | Select-Object -First 1
-    if (-not $file) {
-        $file = $attachments | Where-Object { $_.name -like "*.msix" } | Select-Object -First 1
+    $rawJsonUrl = "https://gitee.com/$Owner/$RepoName/raw/$Branch/releases/latest.json"
+    Write-Info "请求 Gitee raw: $rawJsonUrl"
+    $latest = Invoke-ApiSafe -Uri $rawJsonUrl -Headers $headers
+    if (-not $latest.download_url) {
+        throw "latest.json 缺少 download_url"
     }
-    if (-not $file) {
-        throw "在 Gitee Release $tagName 中未找到 MSIX 附件 (匹配: $AssetPattern)"
-    }
-
-    $downloadUrl = $file.browser_download_url
-    if (-not $downloadUrl -and $file.url) { $downloadUrl = $file.url }
-    if (-not $downloadUrl) {
-        $downloadUrl = "https://gitee.com/$Owner/$Repo/releases/download/$tagName/$($file.name)"
+    if (-not $latest.filename) {
+        throw "latest.json 缺少 filename"
     }
 
     return @{
-        Name         = $file.name
-        DownloadUrl  = $downloadUrl
-        Size         = [long](if ($file.size) { $file.size } else { 0 })
-        TagName      = $tagName
+        Name         = $latest.filename
+        DownloadUrl  = $latest.download_url
+        Size         = [long](if ($latest.size) { $latest.size } else { 0 })
+        TagName      = $latest.tag_name
         Source       = "gitee"
-        ReleaseUrl   = "https://gitee.com/$Owner/$Repo/releases/tag/$tagName"
+        ReleaseUrl   = "https://gitee.com/$Owner/$RepoName/tree/$Branch/releases"
     }
 }
 
@@ -214,40 +209,15 @@ function Get-LatestMsixAsset {
         Fail "Gitee 镜像仓库格式无效: $MirrorRepo"
     }
 
-    Write-Info "切换到 Gitee 国内镜像: $MirrorRepo"
+    Write-Info "切换到 Gitee 国内镜像 ($MirrorBranch/releases): $MirrorRepo"
     try {
-        $giteeLatestUrl = "https://gitee.com/api/v5/repos/$owner/$repoName/releases/latest"
-        Write-Info "请求: $giteeLatestUrl"
-        $giteeRelease = Invoke-ApiSafe -Uri $giteeLatestUrl -Headers $headers
-        Write-Info "Gitee 最新标签: $($giteeRelease.tag_name)"
-        $asset = Find-MsixAssetFromGiteeRelease -Release $giteeRelease -Owner $owner -Repo $repoName
+        $asset = Find-MsixAssetFromGiteeRaw -Owner $owner -RepoName $repoName -Branch $MirrorBranch
         Write-Ok "已选择 Gitee 源: $($asset.Name)"
         return $asset
     }
     catch {
-        Write-Err "Gitee Release API 失败: $($_.Exception.Message)"
-    }
-
-    try {
-        $rawJsonUrl = "https://gitee.com/$owner/$repoName/raw/master/releases/latest.json"
-        Write-Info "尝试 Gitee raw: $rawJsonUrl"
-        $latest = Invoke-ApiSafe -Uri $rawJsonUrl -Headers $headers
-        if (-not $latest.download_url) {
-            throw "latest.json 缺少 download_url"
-        }
-        Write-Ok "已选择 Gitee raw 源: $($latest.filename)"
-        return @{
-            Name         = $latest.filename
-            DownloadUrl  = $latest.download_url
-            Size         = [long](if ($latest.size) { $latest.size } else { 0 })
-            TagName      = $latest.tag_name
-            Source       = "gitee-raw"
-            ReleaseUrl   = "https://gitee.com/$owner/$repoName"
-        }
-    }
-    catch {
-        $rawError = $_.Exception.Message
-        Fail "GitHub 与 Gitee 均无法获取 MSIX。GitHub: $githubError; Gitee raw: $rawError"
+        $giteeError = $_.Exception.Message
+        Fail "GitHub 与 Gitee 均无法获取 MSIX。GitHub: $githubError; Gitee: $giteeError"
     }
 }
 
