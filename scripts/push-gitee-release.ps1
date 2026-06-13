@@ -34,49 +34,112 @@ $msixSize = (Get-Item -LiteralPath $MsixPath).Length
 
 Write-Host ">>> 同步到 Gitee: $repoPath ($tag)" -ForegroundColor Cyan
 
-function Invoke-GiteeApi {
+function Invoke-GiteeRaw {
     param(
         [string]$Method = "GET",
         [string]$Url,
         [hashtable]$Form = $null,
-        [object]$JsonBody = $null
+        [string]$JsonBody = $null
     )
 
+    $params = @{
+        Method = $Method
+        Uri    = $Url
+    }
+
     if ($Form) {
-        return Invoke-RestMethod -Method $Method -Uri $Url -Form $Form
+        $params.Form = $Form
     }
-    if ($JsonBody) {
-        return Invoke-RestMethod -Method $Method -Uri $Url -ContentType "application/json" -Body ($JsonBody | ConvertTo-Json -Compress)
+    elseif ($JsonBody) {
+        $params.ContentType = "application/json;charset=UTF-8"
+        $params.Body = $JsonBody
     }
-    return Invoke-RestMethod -Method $Method -Uri $Url
+
+    $response = Invoke-WebRequest @params -UseBasicParsing
+    $text = $response.Content
+    if ([string]::IsNullOrWhiteSpace($text) -or $text -eq "null") {
+        return $null
+    }
+    return $text | ConvertFrom-Json
 }
 
-# 1) 获取或创建 Release
-$release = $null
-try {
-    $release = Invoke-GiteeApi -Url "$baseApi/releases/tags/$tag?access_token=$token"
-    Write-Host ">>> 已存在 Gitee Release: $tag (id=$($release.id))" -ForegroundColor Gray
+function Get-RepoDefaultBranch {
+    $repo = Invoke-GiteeRaw -Url "$baseApi?access_token=$token"
+    if ($repo -and $repo.default_branch) {
+        return $repo.default_branch
+    }
+    return "master"
 }
-catch {
-    Write-Host ">>> 创建 Gitee Release: $tag" -ForegroundColor Cyan
-    $release = Invoke-GiteeApi -Method POST -Url "$baseApi/releases" -JsonBody @{
+
+function Ensure-GiteeTag {
+    param([string]$TagName, [string]$Refs)
+
+    $tags = Invoke-GiteeRaw -Url "$baseApi/tags?access_token=$token"
+    $exists = $false
+    if ($tags) {
+        $exists = @($tags | Where-Object { $_.name -eq $TagName }).Count -gt 0
+    }
+    if ($exists) {
+        Write-Host ">>> Gitee 标签已存在: $TagName" -ForegroundColor Gray
+        return
+    }
+
+    Write-Host ">>> 创建 Gitee 标签: $TagName -> $Refs" -ForegroundColor Cyan
+    $result = Invoke-GiteeRaw -Method POST -Url "$baseApi/tags" -Form @{
         access_token = $token
-        tag_name     = $tag
-        name         = $tag
-        body         = "星布谷地Wiki $tag (Gitee 国内镜像)"
-        prerelease   = $false
+        tag_name     = $TagName
+        refs         = $Refs
+    }
+    if (-not $result) {
+        throw "创建 Gitee 标签失败: $TagName"
     }
 }
 
-$releaseId = $release.id
-if (-not $releaseId) {
-    throw "无法获取 Gitee Release ID"
+function Get-OrCreateGiteeRelease {
+    param([string]$TagName, [string]$DefaultBranch)
+
+    $release = Invoke-GiteeRaw -Url "$baseApi/releases/tags/$TagName?access_token=$token"
+    if ($release -and $release.id) {
+        Write-Host ">>> 已存在 Gitee Release: $TagName (id=$($release.id))" -ForegroundColor Gray
+        return $release
+    }
+
+    Write-Host ">>> 创建 Gitee Release: $TagName" -ForegroundColor Cyan
+    $bodyObj = @{
+        access_token     = $token
+        tag_name         = $TagName
+        name             = $TagName
+        body             = "星布谷地Wiki $TagName (Gitee 国内镜像)"
+        target_commitish = $DefaultBranch
+        prerelease       = $false
+    }
+    $json = $bodyObj | ConvertTo-Json -Compress
+    $release = Invoke-GiteeRaw -Method POST -Url "$baseApi/releases" -JsonBody $json
+
+    if (-not $release -or -not $release.id) {
+        # 创建后再次查询（部分情况下 POST 响应不含 id）
+        $release = Invoke-GiteeRaw -Url "$baseApi/releases/tags/$TagName?access_token=$token"
+    }
+
+    if (-not $release -or -not $release.id) {
+        throw "无法获取 Gitee Release ID（标签: $TagName）。请确认令牌具备 projects 权限且仓库可写。"
+    }
+
+    Write-Host ">>> Gitee Release 就绪: id=$($release.id)" -ForegroundColor Green
+    return $release
 }
+
+$defaultBranch = Get-RepoDefaultBranch
+Write-Host ">>> 默认分支: $defaultBranch" -ForegroundColor Gray
+
+Ensure-GiteeTag -TagName $tag -Refs $defaultBranch
+$release = Get-OrCreateGiteeRelease -TagName $tag -DefaultBranch $defaultBranch
+$releaseId = $release.id
 
 # 2) 检查附件是否已存在
 $existingNames = @()
 try {
-    $attachList = Invoke-GiteeApi -Url "$baseApi/releases/$releaseId/attach_files?access_token=$token"
+    $attachList = Invoke-GiteeRaw -Url "$baseApi/releases/$releaseId/attach_files?access_token=$token"
     if ($attachList) {
         $existingNames = @($attachList | ForEach-Object { $_.name })
     }
@@ -90,21 +153,21 @@ if ($existingNames -contains $msixName) {
 }
 else {
     Write-Host ">>> 上传 MSIX 附件: $msixName ($([math]::Round($msixSize / 1MB, 2)) MB)" -ForegroundColor Cyan
-    $uploadUrl = "$baseApi/releases/$releaseId/attach_files"
-    Invoke-GiteeApi -Method POST -Url $uploadUrl -Form @{
+    Invoke-GiteeRaw -Method POST -Url "$baseApi/releases/$releaseId/attach_files" -Form @{
         access_token = $token
         file         = Get-Item -LiteralPath $MsixPath
+        name         = $msixName
     }
     Write-Host ">>> 附件上传完成" -ForegroundColor Green
 }
 
 # 3) 重新读取附件，获取下载地址
 $downloadUrl = $null
-$attachList = Invoke-GiteeApi -Url "$baseApi/releases/$releaseId/attach_files?access_token=$token"
+$attachList = Invoke-GiteeRaw -Url "$baseApi/releases/$releaseId/attach_files?access_token=$token"
 $matched = $attachList | Where-Object { $_.name -eq $msixName } | Select-Object -First 1
 if ($matched) {
-  if ($matched.browser_download_url) { $downloadUrl = $matched.browser_download_url }
-  elseif ($matched.url) { $downloadUrl = $matched.url }
+    if ($matched.browser_download_url) { $downloadUrl = $matched.browser_download_url }
+    elseif ($matched.url) { $downloadUrl = $matched.url }
 }
 
 if (-not $downloadUrl) {
@@ -126,19 +189,20 @@ $latestPath = "releases/latest.json"
 $contentBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($latestJson))
 $sha = $null
 try {
-    $existing = Invoke-GiteeApi -Url "$baseApi/contents/$latestPath?access_token=$token"
-    $sha = $existing.sha
+    $existing = Invoke-GiteeRaw -Url "$baseApi/contents/$latestPath?access_token=$token"
+    if ($existing -and $existing.sha) { $sha = $existing.sha }
 }
 catch { }
 
 Write-Host ">>> 更新 Gitee $latestPath" -ForegroundColor Cyan
-$body = @{
+$bodyObj = @{
     access_token = $token
     content      = $contentBase64
     message      = "chore: update latest.json for $tag"
 }
-if ($sha) { $body.sha = $sha }
+if ($sha) { $bodyObj.sha = $sha }
+$putJson = $bodyObj | ConvertTo-Json -Compress
+Invoke-GiteeRaw -Method PUT -Url "$baseApi/contents/$latestPath" -JsonBody $putJson
 
-Invoke-GiteeApi -Method PUT -Url "$baseApi/contents/$latestPath" -JsonBody $body
 Write-Host ">>> Gitee 镜像同步完成" -ForegroundColor Green
 Write-Host "    下载地址: $downloadUrl" -ForegroundColor Gray
