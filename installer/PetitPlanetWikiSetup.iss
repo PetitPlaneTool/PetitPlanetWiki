@@ -27,7 +27,7 @@ WizardStyle=modern
 Uninstallable=no
 
 [Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 Source: "assets\PetitPlanetRootCA.cer"; DestDir: "{tmp}\PetitPlanetWiki"; Flags: deleteafterinstall
