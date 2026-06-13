@@ -287,7 +287,8 @@ git push origin v0.1.1
 | 文件 | 说明 |
 |------|------|
 | `PetitPlanetWiki_0.1.1.0_x64.msix` | 已签名 MSIX 安装包 |
-| `PetitPlanetWikiSetup.exe` | 引导安装器（装证书 → 下载 MSIX → App Installer） |
+| `PetitPlanetWikiSetup.exe` | 在线引导安装器（装证书 → 下载 MSIX） |
+| `PetitPlanetWikiSetupFull.exe` | 离线完整安装器（内置 MSIX，网络失败时自动回退） |
 
 发布页：[github.com/PetitPlaneTool/PetitPlanetWiki/releases](https://github.com/PetitPlaneTool/PetitPlanetWiki/releases)
 

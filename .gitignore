@@ -72,6 +72,7 @@ artifacts/
 dist/
 installer/output/
 installer/assets/*.cer
+installer/assets/bundle.msix
 **/AppPackages/
 **/BundleArtifacts/
 *.appx

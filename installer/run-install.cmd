@@ -23,7 +23,13 @@ echo 正在启动安装程序，请查看本窗口输出...
 echo 日志文件: %LOG%
 echo.
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -NoLogo -WindowStyle Normal -File "%~dp0install-app.ps1" -CertPath "%~dp0PetitPlanetRootCA.cer"
+if exist "%~dp0bundle.msix" (
+    echo [模式] 离线安装包（内置 MSIX）
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -NoLogo -WindowStyle Normal -File "%~dp0install-app.ps1" -CertPath "%~dp0PetitPlanetRootCA.cer" -BundledMsixPath "%~dp0bundle.msix"
+) else (
+    echo [模式] 在线安装包（网络下载 MSIX）
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -NoLogo -WindowStyle Normal -File "%~dp0install-app.ps1" -CertPath "%~dp0PetitPlanetRootCA.cer"
+)
 set "EXITCODE=%ERRORLEVEL%"
 
 echo. >> "%LOG%"

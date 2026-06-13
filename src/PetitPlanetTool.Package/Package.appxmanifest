@@ -11,7 +11,7 @@
   <Identity
     Name="d1a9e6ae-55c4-486b-837c-b5251ec6d11c"
     Publisher="CN=Administrator"
-    Version="0.1.8.0" />
+    Version="0.1.9.0" />
 
   <mp:PhoneIdentity PhoneProductId="d1a9e6ae-55c4-486b-837c-b5251ec6d11c" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -37,7 +37,7 @@
       <uap:VisualElements
         DisplayName="星布谷地Wiki"
         Description="星布谷地Wiki — 露米工作室"
-        BackgroundColor="transparent"
+        BackgroundColor="#FFFAF5"
         Square150x150Logo="Images\Square150x150Logo.png"
         Square44x44Logo="Images\Square44x44Logo.png">
         <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" />

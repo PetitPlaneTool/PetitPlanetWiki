@@ -1,16 +1,14 @@
-"""从 Images/Logo.png 生成 MSIX 各尺寸图标（透明背景、图标居中放大）。"""
+"""从项目根目录 Logo.png 生成 MSIX 各尺寸图标（透明背景、图标尽量铺满）。"""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "src" / "PetitPlanetTool.Package" / "Images" / "Logo.png"
-OUT_DIR = SRC.parent
+SRC_CANDIDATES = [ROOT / "Logo.png", ROOT / "src" / "PetitPlanetTool.Package" / "Images" / "Logo.png"]
+OUT_DIR = ROOT / "src" / "PetitPlanetTool.Package" / "Images"
 
-# 目标尺寸（文件名, 边长或 (宽, 高)）
 SQUARE_SIZES = {
     "StoreLogo.png": 50,
     "Square44x44Logo.png": 44,
@@ -29,14 +27,21 @@ WIDE_SIZES = {
 }
 
 
-def remove_dark_background(img: Image.Image, threshold: int = 40) -> Image.Image:
+def find_source() -> Path:
+    for path in SRC_CANDIDATES:
+        if path.exists():
+            return path
+    raise SystemExit(f"未找到 Logo.png，请将源图放在: {SRC_CANDIDATES[0]}")
+
+
+def remove_dark_background(img: Image.Image, threshold: int = 42) -> Image.Image:
     img = img.convert("RGBA")
     pixels = img.load()
     w, h = img.size
     for y in range(h):
         for x in range(w):
             r, g, b, a = pixels[x, y]
-            if r <= threshold and g <= threshold and b <= threshold:
+            if a > 0 and r <= threshold and g <= threshold and b <= threshold:
                 pixels[x, y] = (r, g, b, 0)
     return img
 
@@ -48,7 +53,7 @@ def crop_to_content(img: Image.Image) -> Image.Image:
     return img.crop(bbox)
 
 
-def fit_square(img: Image.Image, size: int, fill_ratio: float = 0.88) -> Image.Image:
+def fit_square(img: Image.Image, size: int, fill_ratio: float) -> Image.Image:
     side = max(img.size)
     canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     canvas.paste(img, ((side - img.width) // 2, (side - img.height) // 2))
@@ -60,7 +65,7 @@ def fit_square(img: Image.Image, size: int, fill_ratio: float = 0.88) -> Image.I
     return out
 
 
-def fit_wide(img: Image.Image, width: int, height: int, fill_ratio: float = 0.82) -> Image.Image:
+def fit_wide(img: Image.Image, width: int, height: int, fill_ratio: float = 0.86) -> Image.Image:
     target_w = max(1, int(width * fill_ratio))
     target_h = max(1, int(height * fill_ratio))
     ratio = min(target_w / img.width, target_h / img.height)
@@ -72,27 +77,31 @@ def fit_wide(img: Image.Image, width: int, height: int, fill_ratio: float = 0.82
 
 
 def main() -> None:
-    if not SRC.exists():
-        raise SystemExit(f"Source logo not found: {SRC}")
+    src = find_source()
+    print(f">>> 源图: {src}")
 
-    base = remove_dark_background(Image.open(SRC))
+    base = remove_dark_background(Image.open(src))
     base = crop_to_content(base)
 
+    # 同步主 Logo 到 Images 目录
+    logo_dst = OUT_DIR / "Logo.png"
+    base_full = fit_square(base, 1024, fill_ratio=0.92)
+    base_full.save(logo_dst, format="PNG")
+    print(f"  Logo.png (1024x1024)")
+
     for name, size in SQUARE_SIZES.items():
-        ratio = 0.90 if size >= 150 else 0.88
+        ratio = 0.96 if size >= 150 else 0.94 if size >= 44 else 0.92
         out = fit_square(base, size, fill_ratio=ratio)
-        path = OUT_DIR / name
-        out.save(path, format="PNG")
+        out.save(OUT_DIR / name, format="PNG")
         print(f"  {name} ({size}x{size})")
 
     for name, (w, h) in WIDE_SIZES.items():
         out = fit_wide(base, w, h)
-        path = OUT_DIR / name
-        out.save(path, format="PNG")
+        out.save(OUT_DIR / name, format="PNG")
         print(f"  {name} ({w}x{h})")
 
 
 if __name__ == "__main__":
-    print(">>> Generating package icons from Logo.png")
+    print(">>> 从 Logo.png 生成 MSIX 图标资源")
     main()
-    print(">>> Done")
+    print(">>> 完成")
