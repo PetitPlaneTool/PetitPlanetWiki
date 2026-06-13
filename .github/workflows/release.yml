@@ -17,9 +17,6 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
-    env:
-      CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE }}
-      CERTIFICATE_PASSWORD: ${{ secrets.PW }}
 
     steps:
       - name: Checkout
@@ -61,14 +58,25 @@ jobs:
           "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Verify signing secrets
+        id: secrets
         shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.PW }}
         run: |
-          if (-not $env:CERTIFICATE_BASE64 -or -not $env:CERTIFICATE_PASSWORD) {
-            throw "缺少 GitHub Secrets: CERTIFICATE 与 PW。请在主仓库 Settings → Secrets 中配置（值来自 certificate 仓库本地 codesign.pfx）。"
+          $missing = @()
+          if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_BASE64)) { $missing += 'CERTIFICATE' }
+          if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE_PASSWORD)) { $missing += 'PW' }
+          if ($missing.Count -gt 0) {
+            throw "缺少 GitHub Secrets: $($missing -join ', ')。请在 PetitPlanetWiki 主仓库 Settings → Secrets and variables → Actions 中配置（名称须为 CERTIFICATE 与 PW）。"
           }
+          "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Build signed release artifacts
         shell: pwsh
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.PW }}
         run: |
           ./scripts/release-build.ps1 -Version "${{ steps.version.outputs.version }}"
 
