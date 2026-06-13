@@ -1,5 +1,5 @@
-# 星布谷地Wiki 引导安装脚本（命令行模式，中文详细日志）
-# 流程：安装根证书到本地计算机\受信任的根证书颁发机构 → 下载 MSIX → 拉起安装 → 清理
+﻿# 星布谷地Wiki 引导安装脚本（命令行模式，中文详细日志）
+# 流程: 安装根证书到本地计算机\受信任的根证书颁发机构 -> 下载 MSIX -> 拉起安装 -> 清理
 
 param(
     [Parameter(Mandatory = $true)]
@@ -13,6 +13,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $logFile = Join-Path $env:TEMP "PetitPlanetWikiSetup_install.log"
@@ -70,7 +72,7 @@ function Install-RootCertificateLocalMachine([string]$Path) {
     }
 
     if (-not (Test-IsAdmin)) {
-        throw "当前未以管理员身份运行，无法安装到「本地计算机\受信任的根证书颁发机构」。请右键 Setup.exe → 以管理员身份运行。"
+        throw "当前未以管理员身份运行，无法安装到[本地计算机\受信任的根证书颁发机构]。请右键 Setup.exe -> 以管理员身份运行。"
     }
 
     $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($Path)
@@ -78,11 +80,11 @@ function Install-RootCertificateLocalMachine([string]$Path) {
     Write-Info "证书主题: $($cert.Subject)"
     Write-Info "证书颁发者: $($cert.Issuer)"
     Write-Info "证书指纹: $($cert.Thumbprint)"
-    Write-Info "安装目标: 本地计算机 → 受信任的根证书颁发机构"
+    Write-Info "安装目标: 本地计算机 -> 受信任的根证书颁发机构"
     Write-Info "证书存储路径: Cert:\LocalMachine\Root"
-    Write-Info "certmgr 查看: certmgr.msc → 本地计算机 → 受信任的根证书颁发机构"
+    Write-Info "certmgr 查看: certmgr.msc -> 本地计算机 -> 受信任的根证书颁发机构"
 
-    # 若误装到「个人」，先移除
+    # 若误装到[个人]，先移除
     Remove-CertFromStore -StoreName "My" -Location CurrentUser -Thumbprint $cert.Thumbprint
     Remove-CertFromStore -StoreName "My" -Location LocalMachine -Thumbprint $cert.Thumbprint
 
@@ -109,7 +111,7 @@ function Install-RootCertificateLocalMachine([string]$Path) {
     if (-not $verified) {
         throw "验证失败：Cert:\LocalMachine\Root 中未找到该证书"
     }
-    Write-Ok "验证成功：请在 certmgr.msc 的「本地计算机 → 受信任的根证书颁发机构」中查看"
+    Write-Ok "验证成功: 请在 certmgr.msc 的[本地计算机 -> 受信任的根证书颁发机构]中查看"
 }
 
 function Fail([string]$Message) {
@@ -236,6 +238,6 @@ finally {
 }
 
 Write-Title "全部步骤已完成"
-Write-Info "若应用未出现在开始菜单，请从开始菜单搜索「星布谷地Wiki」。"
+Write-Info "若应用未出现在开始菜单，请从开始菜单搜索[星布谷地Wiki]。"
 Write-Info "完整日志: $logFile"
 exit 0

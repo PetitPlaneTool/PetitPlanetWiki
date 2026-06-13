@@ -4,8 +4,7 @@ chcp 65001 >nul 2>&1
 cd /d "%~dp0"
 
 set "LOG=%TEMP%\PetitPlanetWikiSetup_install.log"
-echo [%date% %time%] PetitPlanetWiki Setup started > "%LOG%"
-echo 工作目录: %~dp0 >> "%LOG%"
+powershell.exe -NoProfile -Command "Add-Content -LiteralPath '%LOG%' -Value ('[{0}] PetitPlanetWiki Setup started' -f (Get-Date)) -Encoding UTF8; Add-Content -LiteralPath '%LOG%' -Value ('WorkingDir: %~dp0') -Encoding UTF8"
 
 if not exist "%~dp0PetitPlanetRootCA.cer" (
     echo [错误] 未找到根证书: %~dp0PetitPlanetRootCA.cer
@@ -28,7 +27,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -NoLogo -WindowStyle Normal -F
 set "EXITCODE=%ERRORLEVEL%"
 
 echo. >> "%LOG%"
-echo Exit code: %EXITCODE% >> "%LOG%"
+powershell.exe -NoProfile -Command "Add-Content -LiteralPath '%LOG%' -Value ('Exit code: %EXITCODE%') -Encoding UTF8"
 
 echo.
 echo ----------------------------------------
