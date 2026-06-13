@@ -7,6 +7,8 @@ param(
 
     [string]$MainRepo = "PetitPlaneTool/PetitPlanetWiki",
 
+    [string]$MirrorRepo = "kqx123/petit-planet-wiki",
+
     [string]$CertRepo = "PetitPlaneTool/certificate",
 
     [string]$AssetPattern = "PetitPlanetWiki_*.msix"
@@ -118,10 +120,135 @@ function Fail([string]$Message) {
     Write-Err $Message
     Write-Host ""
     Write-Host "安装已中止。日志: $logFile" -ForegroundColor Yellow
-    Write-Host "主仓库: https://github.com/$MainRepo" -ForegroundColor Gray
+    Write-Host "GitHub: https://github.com/$MainRepo" -ForegroundColor Gray
+    Write-Host "Gitee 镜像: https://gitee.com/$MirrorRepo" -ForegroundColor Gray
     Write-Host "证书仓库: https://github.com/$CertRepo" -ForegroundColor Gray
     try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { }
     exit 1
+}
+
+function Invoke-ApiSafe {
+    param(
+        [string]$Uri,
+        [hashtable]$Headers
+    )
+    try {
+        return Invoke-RestMethod -Uri $Uri -Headers $Headers -ErrorAction Stop
+    }
+    catch {
+        $status = $null
+        if ($_.Exception.Response) {
+            $status = [int]$_.Exception.Response.StatusCode
+        }
+        throw "请求失败 ($status): $Uri — $($_.Exception.Message)"
+    }
+}
+
+function Find-MsixAssetFromGitHubRelease([object]$Release) {
+    $asset = $Release.assets | Where-Object { $_.name -like $AssetPattern } | Select-Object -First 1
+    if (-not $asset) {
+        $asset = $Release.assets | Where-Object { $_.name -like "*.msix" } | Select-Object -First 1
+    }
+    if (-not $asset) {
+        throw "在 GitHub Release $($Release.tag_name) 中未找到 MSIX (匹配: $AssetPattern)"
+    }
+    return @{
+        Name         = $asset.name
+        DownloadUrl  = $asset.browser_download_url
+        Size         = [long]$asset.size
+        TagName      = $Release.tag_name
+        Source       = "github"
+        ReleaseUrl   = $Release.html_url
+    }
+}
+
+function Find-MsixAssetFromGiteeRelease([object]$Release, [string]$Owner, [string]$Repo) {
+    $releaseId = $Release.id
+    $tagName = $Release.tag_name
+    $attachUrl = "https://gitee.com/api/v5/repos/$Owner/$Repo/releases/$releaseId/attach_files"
+    $attachments = Invoke-ApiSafe -Uri $attachUrl -Headers $headers
+
+    $file = $attachments | Where-Object { $_.name -like $AssetPattern } | Select-Object -First 1
+    if (-not $file) {
+        $file = $attachments | Where-Object { $_.name -like "*.msix" } | Select-Object -First 1
+    }
+    if (-not $file) {
+        throw "在 Gitee Release $tagName 中未找到 MSIX 附件 (匹配: $AssetPattern)"
+    }
+
+    $downloadUrl = $file.browser_download_url
+    if (-not $downloadUrl -and $file.url) { $downloadUrl = $file.url }
+    if (-not $downloadUrl) {
+        $downloadUrl = "https://gitee.com/$Owner/$Repo/releases/download/$tagName/$($file.name)"
+    }
+
+    return @{
+        Name         = $file.name
+        DownloadUrl  = $downloadUrl
+        Size         = [long](if ($file.size) { $file.size } else { 0 })
+        TagName      = $tagName
+        Source       = "gitee"
+        ReleaseUrl   = "https://gitee.com/$Owner/$Repo/releases/tag/$tagName"
+    }
+}
+
+function Get-LatestMsixAsset {
+    $githubError = $null
+    Write-Info "优先从 GitHub 获取最新版本..."
+    try {
+        $releaseUrl = "https://api.github.com/repos/$MainRepo/releases/latest"
+        Write-Info "请求: $releaseUrl"
+        $release = Invoke-ApiSafe -Uri $releaseUrl -Headers $headers
+        Write-Info "GitHub 最新标签: $($release.tag_name)"
+        $asset = Find-MsixAssetFromGitHubRelease -Release $release
+        Write-Ok "已选择 GitHub 源: $($asset.Name)"
+        return $asset
+    }
+    catch {
+        $githubError = $_.Exception.Message
+        Write-Err "GitHub 不可用: $githubError"
+    }
+
+    $owner, $repoName = $MirrorRepo -split '/', 2
+    if (-not $owner -or -not $repoName) {
+        Fail "Gitee 镜像仓库格式无效: $MirrorRepo"
+    }
+
+    Write-Info "切换到 Gitee 国内镜像: $MirrorRepo"
+    try {
+        $giteeLatestUrl = "https://gitee.com/api/v5/repos/$owner/$repoName/releases/latest"
+        Write-Info "请求: $giteeLatestUrl"
+        $giteeRelease = Invoke-ApiSafe -Uri $giteeLatestUrl -Headers $headers
+        Write-Info "Gitee 最新标签: $($giteeRelease.tag_name)"
+        $asset = Find-MsixAssetFromGiteeRelease -Release $giteeRelease -Owner $owner -Repo $repoName
+        Write-Ok "已选择 Gitee 源: $($asset.Name)"
+        return $asset
+    }
+    catch {
+        Write-Err "Gitee Release API 失败: $($_.Exception.Message)"
+    }
+
+    try {
+        $rawJsonUrl = "https://gitee.com/$owner/$repoName/raw/master/releases/latest.json"
+        Write-Info "尝试 Gitee raw: $rawJsonUrl"
+        $latest = Invoke-ApiSafe -Uri $rawJsonUrl -Headers $headers
+        if (-not $latest.download_url) {
+            throw "latest.json 缺少 download_url"
+        }
+        Write-Ok "已选择 Gitee raw 源: $($latest.filename)"
+        return @{
+            Name         = $latest.filename
+            DownloadUrl  = $latest.download_url
+            Size         = [long](if ($latest.size) { $latest.size } else { 0 })
+            TagName      = $latest.tag_name
+            Source       = "gitee-raw"
+            ReleaseUrl   = "https://gitee.com/$owner/$repoName"
+        }
+    }
+    catch {
+        $rawError = $_.Exception.Message
+        Fail "GitHub 与 Gitee 均无法获取 MSIX。GitHub: $githubError; Gitee raw: $rawError"
+    }
 }
 
 $headers = @{ "User-Agent" = "PetitPlanetWiki-Setup/1.0" }
@@ -132,7 +259,8 @@ $installed = $false
 
 Write-Title "星布谷地Wiki 安装向导（命令行）"
 Write-Info "日志文件: $logFile"
-Write-Info "主仓库: https://github.com/$MainRepo"
+Write-Info "GitHub: https://github.com/$MainRepo"
+Write-Info "Gitee 镜像: https://gitee.com/$MirrorRepo"
 Write-Info "证书仓库: https://github.com/$CertRepo"
 Write-Info "当前用户: $env:USERNAME"
 Write-Info "管理员权限: $(Test-IsAdmin)"
@@ -142,32 +270,24 @@ try {
     Install-RootCertificateLocalMachine -Path $CertPath
 
     Write-Title "步骤 2/4 获取最新 MSIX 下载地址"
-    $releaseUrl = "https://api.github.com/repos/$MainRepo/releases/latest"
-    Write-Info "请求: $releaseUrl"
-    $release = Invoke-RestMethod -Uri $releaseUrl -Headers $headers
-    Write-Info "最新版本标签: $($release.tag_name)"
-    Write-Info "Release 页面: $($release.html_url)"
-
-    $asset = $release.assets | Where-Object { $_.name -like $AssetPattern } | Select-Object -First 1
-    if (-not $asset) {
-        $asset = $release.assets | Where-Object { $_.name -like "*.msix" } | Select-Object -First 1
+    $msixAsset = Get-LatestMsixAsset
+    Write-Info "下载源: $($msixAsset.Source)"
+    Write-Info "版本标签: $($msixAsset.TagName)"
+    Write-Info "Release 页面: $($msixAsset.ReleaseUrl)"
+    Write-Info "安装包名称: $($msixAsset.Name)"
+    Write-Info "下载地址: $($msixAsset.DownloadUrl)"
+    if ($msixAsset.Size -gt 0) {
+        Write-Info "文件大小: $([math]::Round($msixAsset.Size / 1MB, 2)) MB ($($msixAsset.Size) 字节)"
     }
-    if (-not $asset) {
-        Fail "在 Release $($release.tag_name) 中未找到 MSIX 文件（匹配: $AssetPattern）"
-    }
-
-    Write-Info "安装包名称: $($asset.name)"
-    Write-Info "下载地址: $($asset.browser_download_url)"
-    Write-Info "文件大小: $([math]::Round($asset.size / 1MB, 2)) MB ($($asset.size) 字节)"
 
     Write-Title "步骤 3/4 下载 MSIX 到临时目录"
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
     Write-Info "临时目录: $tempDir"
-    $msixPath = Join-Path $tempDir $asset.name
+    $msixPath = Join-Path $tempDir $msixAsset.Name
     Write-Info "保存路径: $msixPath"
     Write-Info "正在下载，请稍候..."
 
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $msixPath -UseBasicParsing -Headers $headers
+    Invoke-WebRequest -Uri $msixAsset.DownloadUrl -OutFile $msixPath -UseBasicParsing -Headers $headers
 
     if (-not (Test-Path -LiteralPath $msixPath)) {
         Fail "下载失败，文件不存在: $msixPath"
