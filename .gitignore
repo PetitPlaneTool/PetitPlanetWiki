@@ -81,12 +81,15 @@ installer/assets/*.cer
 *.msix
 *.msixbundle
 *.msixupload
-*.cer
-*.pfx
-# 本地证书目录（公钥见 certificate 独立仓库，私钥勿提交）
-certificate/
 *.publishproj
 PublishProfiles/*.pubxml.user
+
+# 证书与签名私钥（公钥见 certificate 独立仓库）
+certificate/
+*.cer
+*.pfx
+codesign.pfx
+codesign.pfx.*
 
 # Generated frontend assets copied into Host
 src/PetitPlanetTool.Host/Assets/Web/
@@ -97,6 +100,7 @@ src/PetitPlanetTool.Host/Assets/Web/
 node_modules/
 frontend/dist/
 frontend/dist-ssr/
+frontend/package-lock.json
 *.local
 npm-debug.log*
 yarn-debug.log*
@@ -113,7 +117,6 @@ lerna-debug.log*
 .env.*
 !.env.example
 secrets.json
-*.pfx
 *.key
 
 # =========================
@@ -125,7 +128,16 @@ coverage/
 *.coveragexml
 
 # =========================
+# Python (临时脚本等)
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+
+# =========================
 # Misc
 # =========================
 *.bak
 *.orig
+*.stackdump
+MSIX签名解决方案.md

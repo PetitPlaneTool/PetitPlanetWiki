@@ -220,31 +220,149 @@ cd "src\PetitPlanetTool.Package\AppPackages\PetitPlanetTool (Package)_0.0.2.0_x6
 .\Add-AppDevPackage.ps1
 ```
 
-### 5. CI/CD 发布与用户安装
+### 5. CI/CD 与发布
+
+相关仓库：
 
 | 仓库 | 说明 |
 |------|------|
 | [PetitPlanetWiki](https://github.com/PetitPlaneTool/PetitPlanetWiki) | 主代码仓库，GitHub Actions 构建签名 MSIX 与 Setup.exe |
 | [certificate](https://github.com/PetitPlaneTool/certificate) | 根证书公钥 `PetitPlanetRootCA.cer`；PFX 私钥仅存 Secrets |
 
-**维护者发布：**
+#### 工作流说明
 
-1. 在主仓库 **Settings → Secrets** 配置 `CERTIFICATE`（PFX Base64）与 `PW`（PFX 密码）
-2. 推送标签触发发布：`git tag v0.0.2 && git push origin v0.0.2`
-3. 或在 Actions 中手动运行 **Release** 工作流
+| 工作流 | 文件 | 触发条件 | 作用 |
+|--------|------|----------|------|
+| **CI** | `.github/workflows/ci.yml` | `main` 分支推送 / Pull Request | 构建未签名 MSIX，验证工程可编译 |
+| **Release** | `.github/workflows/release.yml` | 推送 `v*` 标签 / 手动运行 | 签名 MSIX + Inno Setup，发布到 GitHub Releases |
 
-**Release 产物：**
+```mermaid
+flowchart LR
+    subgraph dev [开发]
+        A[提交到 main] --> B[CI 构建验证]
+    end
+    subgraph release [发布]
+        C[更新版本号] --> D[推送标签 vX.Y.Z]
+        D --> E[Release 工作流]
+        E --> F[构建前端 + MSIX]
+        F --> G[Environment 签名]
+        G --> H[编译 Setup.exe]
+        H --> I[GitHub Releases]
+    end
+```
 
-- `PetitPlanetWiki_0.0.2.0_x64.msix` — 已签名 MSIX
-- `PetitPlanetWikiSetup.exe` — Inno Setup 引导安装器（自动装证书 + 下载 MSIX + App Installer）
+#### Secrets 配置（维护者）
+
+签名凭据配置在 **Environment `CERTIFICATE`**（非仓库级 Secrets）：
+
+1. 仓库 **Settings → Environments → CERTIFICATE**
+2. 在 **Environment secrets** 中添加：
+
+| Secret | 值 |
+|--------|-----|
+| `CERTIFICATE` | `codesign.pfx` 的 Base64 全文 |
+| `PW` | PFX 导出密码 |
+
+> Release 工作流已声明 `environment: CERTIFICATE`，否则无法读取上述 Secrets。
+
+根证书公钥发布在 [certificate 仓库](https://github.com/PetitPlaneTool/certificate)；
+
+#### 发布步骤
+
+1. 在 `src/Directory.Build.props` 及 `Package.appxmanifest` 等处更新版本号
+2. 提交并推送到 `main`
+3. 创建并推送标签（版本号与标签一致，前缀 `v`）：
+
+```powershell
+git tag v0.0.2
+git push origin main
+git push origin v0.0.2
+```
+
+也可在 **Actions → Release → Run workflow** 手动触发（填写版本号如 `0.0.2`）。
+
+#### Release 产物
+
+| 文件 | 说明 |
+|------|------|
+| `PetitPlanetWiki_0.0.2.0_x64.msix` | 已签名 MSIX 安装包 |
+| `PetitPlanetWikiSetup.exe` | 引导安装器（装证书 → 下载 MSIX → App Installer） |
+
+发布页：[github.com/PetitPlaneTool/PetitPlanetWiki/releases](https://github.com/PetitPlaneTool/PetitPlanetWiki/releases)
 
 **用户安装（推荐）：** 下载 `PetitPlanetWikiSetup.exe` 双击运行。详见 [`installer/README.md`](installer/README.md)。
 
-**清理本地构建产物：**
+#### 本地构建脚本
+
+| 脚本 | 用途 |
+|------|------|
+| `scripts/dev.ps1` | 启动前端开发服务器 |
+| `scripts/build-frontend.ps1` | 构建前端 `frontend/dist` |
+| `scripts/build-msix.ps1` | 构建未签名 MSIX（需 MSBuild） |
+| `scripts/clean-build.ps1` | 清理 `bin/`、`obj/`、`AppPackages/`、`dist/` 等 |
+| `scripts/release-build.ps1` | 完整发布构建（需设置 `CERTIFICATE_BASE64` / `CERTIFICATE_PASSWORD` 环境变量） |
+| `scripts/sign-msix.ps1` | 使用 PFX 对 MSIX / EXE 签名 |
+| `scripts/prepare-installer.ps1` | 从 certificate 仓库下载根证书公钥 |
 
 ```powershell
 .\scripts\clean-build.ps1
 ```
+
+---
+
+## 贡献与提交规范
+
+### 分支策略
+
+- `main`：稳定分支，CI 通过后方可合并
+- 功能开发请从 `main` 拉取分支，通过 Pull Request 合并
+
+### 提交信息
+
+使用简洁的中文或英文说明 **做了什么、为何做**，推荐格式：
+
+```
+<type>: <简短描述>
+
+可选的详细说明
+```
+
+| type | 含义 |
+|------|------|
+| `feat` | 新功能 |
+| `fix` | 缺陷修复 |
+| `docs` | 文档变更 |
+| `chore` | 构建、脚本、配置等杂项 |
+| `refactor` | 重构（不改变行为） |
+
+示例：`feat: 添加友邻详情页筛选`、`fix: 修复 Release 工作流 Environment 读取`。
+
+### 禁止提交的内容
+
+以下文件/目录 **不得** 进入 Git 仓库（已在 `.gitignore` 中忽略）：
+
+| 类别 | 示例 |
+|------|------|
+| 签名私钥 | `*.pfx`、`codesign.pfx.*`、`certificate/` 目录 |
+| 构建产物 | `dist/`、`**/bin/`、`**/obj/`、`**/AppPackages/`、`frontend/dist/` |
+| 依赖目录 | `node_modules/`、NuGet `packages/` |
+| 本地配置与密钥 | `.env`、`secrets.json`、含密码的文本文件 |
+| 自动生成资源 | `src/PetitPlanetTool.Host/Assets/Web/`（由构建复制） |
+| 安装器临时文件 | `installer/output/`、`installer/assets/*.cer` |
+
+提交前建议执行：
+
+```powershell
+git status
+.\scripts\clean-build.ps1   # 可选：清理本地构建残留
+```
+
+### Pull Request 检查项
+
+- [ ] 不包含私钥、密码、`.env` 等敏感信息
+- [ ] 前端变更在 `frontend` 目录下可正常 `pnpm build`
+- [ ] 涉及宿主/打包时，本地或 CI 构建无报错
+- [ ] 版本发布类变更已同步 `Directory.Build.props` 与 `Package.appxmanifest`
 
 ---
 
@@ -292,10 +410,12 @@ PetitPlanetTool/
 │
 └── scripts/
     ├── dev.ps1                        # 开发模式启动脚本
-    ├── build-frontend.ps1             # 前端生产构建脚本
+    ├── build-frontend.ps1             # 前端生产构建
     ├── build-msix.ps1                 # 构建未签名 MSIX
     ├── clean-build.ps1                # 清理构建产物
-    └── release-build.ps1              # CI 发布构建（签名 + Setup）
+    ├── release-build.ps1              # 完整发布构建（CI 调用）
+    ├── sign-msix.ps1                  # signtool 签名
+    └── prepare-installer.ps1          # 下载根证书公钥（Inno Setup 用）
 ```
 
 ---
