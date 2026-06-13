@@ -20,7 +20,15 @@ New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
 & (Join-Path $PSScriptRoot "clean-build.ps1")
 
-$msixBuilt = & (Join-Path $PSScriptRoot "build-msix.ps1") -Platform $Platform
+$msixBuilt = & (Join-Path $PSScriptRoot "build-msix.ps1") -Platform $Platform | Select-Object -Last 1
+if ([string]::IsNullOrWhiteSpace($msixBuilt) -or -not (Test-Path $msixBuilt)) {
+    $appPackages = Join-Path $Root "src\PetitPlanetTool.Package\AppPackages"
+    $msixBuilt = (Get-ChildItem -Path $appPackages -Filter "*.msix" -Recurse -ErrorAction SilentlyContinue |
+        Select-Object -First 1).FullName
+}
+if ([string]::IsNullOrWhiteSpace($msixBuilt) -or -not (Test-Path $msixBuilt)) {
+    throw "未找到构建输出的 .msix 文件"
+}
 $releaseMsixName = "PetitPlanetWiki_${appxVersion}_${Platform}.msix"
 $releaseMsixPath = Join-Path $distDir $releaseMsixName
 Copy-Item $msixBuilt $releaseMsixPath -Force

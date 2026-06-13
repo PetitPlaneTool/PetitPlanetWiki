@@ -28,7 +28,8 @@ Write-Host ">>> 构建 MSIX ($Configuration | $Platform)..." -ForegroundColor Cy
     /p:Platform=$Platform `
     /p:AppxPackageSigningEnabled=false `
     /p:UapAppxPackageBuildMode=SideloadOnly `
-    /p:AppxBundle=Never
+    /p:AppxBundle=Never `
+    /nologo /v:m | Out-Host
 
 if ($LASTEXITCODE -ne 0) {
     throw "MSBuild 失败 (exit $LASTEXITCODE)"
@@ -41,4 +42,4 @@ if (-not $msix) {
 }
 
 Write-Host ">>> MSIX 输出: $($msix.FullName)" -ForegroundColor Green
-return $msix.FullName
+Write-Output $msix.FullName
